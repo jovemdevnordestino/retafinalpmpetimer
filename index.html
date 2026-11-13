@@ -66,6 +66,19 @@ h1{margin:7px 0 0;font-family:var(--f-display);font-weight:400;font-size:clamp(2
 .chip{font:600 14px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-hi);background:rgba(214,162,62,.08);border:1px solid var(--line-hi);padding:0 16px;min-height:44px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .chip:hover{border-color:var(--gold)}
 .chip .n{font-family:var(--f-display);font-size:22px;letter-spacing:.02em;color:var(--ember);font-weight:400}
+.links{margin-top:20px}
+.ltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:16px}
+.ltile{display:flex;align-items:stretch;min-width:0;border:1px solid var(--line-hi);border-radius:4px;background:linear-gradient(180deg,var(--surface-2),var(--surface))}
+.ltile:hover{border-color:var(--gold);box-shadow:0 0 18px rgba(255,100,20,.14)}
+.ltile a{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:58px;padding:10px 6px 10px 14px;color:var(--fg);text-decoration:none}
+.ltile .ln{font:700 16px/1.15 var(--f-label);letter-spacing:.08em;text-transform:uppercase;overflow-wrap:anywhere}
+.ltile .ln::after{content:"\2197";margin-left:6px;color:var(--gold)}
+.ltile .lh{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.ltile .x{flex:none;align-self:flex-start;margin:6px 4px 0 0}
+.lform{display:flex;gap:10px;flex-wrap:wrap}
+.lform input{width:auto;flex:1 1 160px}
+.lform input[type=url],.lform input#lUrl{flex:2 1 240px}
+.lform .ghost{flex:0 0 auto;padding:0 20px;min-height:46px}
 .tools{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .sync{display:inline-flex;align-items:center;gap:8px;min-height:44px;font:600 12px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
@@ -323,6 +336,17 @@ select:hover,input:hover{border-color:var(--gold)}
     </div>
   </div>
 
+  <section class="panel links" aria-label="Links rápidos">
+    <div class="phead"><h2 class="ptitle">Links rápidos</h2><span class="lab" id="lCount"></span></div>
+    <div class="lform">
+      <input id="lName" type="text" maxlength="40" placeholder="Nome (ex.: Aulas)" aria-label="Nome do link" autocomplete="off">
+      <input id="lUrl" type="text" inputmode="url" placeholder="Endereço (ex.: site.com.br/aulas)" aria-label="Endereço do link" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <button class="btn ghost" id="addLink" type="button">Adicionar</button>
+    </div>
+    <div class="ltiles" id="ltiles"></div>
+    <p class="empty" id="lEmpty" style="margin-top:16px">Nenhum link ainda. Adicione a plataforma de aulas, o banco de questões ou o edital.</p>
+  </section>
+
   <details class="panel settings" id="settings">
     <summary>Ajustes de campanha</summary>
     <div class="sgrid">
@@ -345,7 +369,7 @@ select:hover,input:hover{border-color:var(--gold)}
 
     <div class="danger">
       <div>
-        <p>Sessões salvas no Supabase (tabela study_sessions), com cópia neste navegador. Meta, matérias e tempos ficam só neste navegador.</p>
+        <p>Sessões salvas no Supabase (tabela study_sessions), com cópia neste navegador. Meta, matérias, tempos e links rápidos ficam só neste navegador.</p>
         <p class="syncmsg" id="syncMsg" hidden></p>
       </div>
       <button class="btn ghost" id="clearBtn" type="button">Apagar histórico</button>
@@ -387,7 +411,16 @@ var BREAK_P=[
 function pad(n){return n<10?'0'+n:''+n}
 function dayKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function clamp(v,a,b){return Math.min(b,Math.max(a,v))}
-function def(){return{focus:25,short:5,long:15,goal:4,exam:'',sound:true,subjects:DEFAULT_SUBJECTS.slice(),subject:DEFAULT_SUBJECTS[0],sessions:[],cycleDone:0,cycleDay:''}}
+function normUrl(v){
+  v=String(v||'').trim();
+  if(!v)return null;
+  if(!/^https?:\/\//i.test(v)){
+    if(/^[a-z][a-z0-9+.-]*:\/\//i.test(v)||/^(javascript|data|vbscript|file|mailto|tel|blob):/i.test(v))return null;
+    v='https://'+v;
+  }
+  try{var u=new URL(v);return (u.protocol==='http:'||u.protocol==='https:')&&u.hostname.indexOf('.')>0?u.href:null}catch(e){return null}
+}
+function def(){return{focus:25,short:5,long:15,goal:4,exam:'',sound:true,subjects:DEFAULT_SUBJECTS.slice(),subject:DEFAULT_SUBJECTS[0],sessions:[],cycleDone:0,cycleDay:'',links:[]}}
 function sanitize(d){
   d.focus=Math.round(clamp(+d.focus||25,1,180));
   d.short=Math.round(clamp(+d.short||5,1,60));
@@ -399,6 +432,7 @@ function sanitize(d){
   if(d.subjects.indexOf(d.subject)<0)d.subject=d.subjects[0];
   if(!Array.isArray(d.sessions))d.sessions=[];
   d.sessions=d.sessions.filter(function(x){return x&&isFinite(x.t)&&isFinite(x.s)});
+  d.links=(Array.isArray(d.links)?d.links:[]).filter(function(l){return l&&typeof l.n==='string'&&typeof l.u==='string'&&normUrl(l.u)}).slice(0,30);
   var tk=dayKey(Date.now());
   if(d.cycleDay!==tk){d.cycleDone=0;d.cycleDay=tk}
   d.cycleDone=Math.max(0,Math.floor(+d.cycleDone||0));
@@ -750,6 +784,38 @@ function renderExam(){
   else chip.textContent='Prova realizada';
 }
 
+/* ---------- links rápidos ---------- */
+function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return ''}}
+function renderLinks(){
+  var h='';
+  S.links.forEach(function(l,i){
+    h+='<div class="ltile"><a href="'+esc(l.u)+'" target="_blank" rel="noopener noreferrer"><span class="ln">'+esc(l.n)+'</span><span class="lh">'+esc(hostOf(l.u))+'</span></a>'+
+       '<button class="x" type="button" data-lrm="'+i+'" aria-label="Remover link '+esc(l.n)+'">&times;</button></div>';
+  });
+  $('ltiles').innerHTML=h;
+  $('lEmpty').hidden=S.links.length>0;
+  $('lCount').textContent=S.links.length?S.links.length+(S.links.length===1?' link':' links'):'';
+}
+function addLink(){
+  var nameI=$('lName'),urlI=$('lUrl'),href=normUrl(urlI.value);
+  if(!href){toast('Digite um endereço válido, como site.com.br/aulas.');urlI.focus();return}
+  if(S.links.some(function(l){return l.u===href})){toast('Esse link já está na lista.');return}
+  if(S.links.length>=30){toast('Limite de 30 links.');return}
+  var n=nameI.value.trim().slice(0,40)||hostOf(href);
+  S.links.push({n:n,u:href});
+  nameI.value='';urlI.value='';
+  save();renderLinks();toast('Link adicionado.');
+}
+$('addLink').addEventListener('click',addLink);
+['lName','lUrl'].forEach(function(id){
+  $(id).addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();addLink()}});
+});
+$('ltiles').addEventListener('click',function(e){
+  var b=e.target.closest('[data-lrm]');if(!b)return;
+  S.links.splice(+b.getAttribute('data-lrm'),1);
+  save();renderLinks();
+});
+
 /* ---------- matérias e ajustes ---------- */
 function renderSubjects(){
   var sel=$('subject'),h='';
@@ -903,7 +969,7 @@ document.addEventListener('visibilitychange',function(){
   for(var i=0;i<4;i++)h+='<span class="pip"></span>';
   pips.innerHTML=h;
 })();
-renderSubjects();renderSettings();renderExam();renderStats();setPhrase();render();
+renderSubjects();renderSettings();renderExam();renderStats();renderLinks();setPhrase();render();
 setSync(pendingCount()?'err':'busy');
 loadRemote();
 })();
