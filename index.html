@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Timer de Guerra PMPE</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +28,10 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
 body{
+  margin:0;
   background:var(--bg);
   color:var(--fg);
   font-family:var(--f-body);
@@ -66,19 +72,23 @@ h1{margin:7px 0 0;font-family:var(--f-display);font-weight:400;font-size:clamp(2
 .chip{font:600 14px/1 var(--f-label);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-hi);background:rgba(214,162,62,.08);border:1px solid var(--line-hi);padding:0 16px;min-height:44px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .chip:hover{border-color:var(--gold)}
 .chip .n{font-family:var(--f-display);font-size:22px;letter-spacing:.02em;color:var(--ember);font-weight:400}
-.links{margin-top:20px}
-.ltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:16px}
-.ltile{display:flex;align-items:stretch;min-width:0;border:1px solid var(--line-hi);border-radius:4px;background:linear-gradient(180deg,var(--surface-2),var(--surface))}
-.ltile:hover{border-color:var(--gold);box-shadow:0 0 18px rgba(255,100,20,.14)}
-.ltile a{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:58px;padding:10px 6px 10px 14px;color:var(--fg);text-decoration:none}
-.ltile .ln{font:700 16px/1.15 var(--f-label);letter-spacing:.08em;text-transform:uppercase;overflow-wrap:anywhere}
-.ltile .ln::after{content:"\2197";margin-left:6px;color:var(--gold)}
-.ltile .lh{font-size:12px;color:var(--dim);overflow-wrap:anywhere}
-.ltile .x{flex:none;align-self:flex-start;margin:6px 4px 0 0}
-.lform{display:flex;gap:10px;flex-wrap:wrap}
-.lform input{width:auto;flex:1 1 160px}
-.lform input[type=url],.lform input#lUrl{flex:2 1 240px}
-.lform .ghost{flex:0 0 auto;padding:0 20px;min-height:46px}
+.qlinks{margin-top:20px;padding:0 2px}
+.qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qrow .lab{color:var(--dim)}
+.qchips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.qchip{display:inline-flex;align-items:center;max-width:100%;border:1px solid var(--line);border-radius:3px}
+.qchip:hover{border-color:var(--line-hi)}
+.qchip a{padding:6px 4px 6px 10px;font:600 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-decoration:none;overflow-wrap:anywhere}
+.qchip a:hover{color:var(--gold-hi)}
+.qchip .x{flex:none;width:26px;height:26px;font-size:16px;color:var(--dim);opacity:.55}
+.qchip:hover .x,.qchip .x:focus-visible{opacity:1}
+.qnone{font-size:13px;color:var(--dim)}
+.qadd{font:600 12px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);background:none;border:0;padding:10px 6px;min-height:36px;cursor:pointer}
+.qadd:hover{color:var(--gold-hi)}
+.lform{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.lform input{width:auto;flex:1 1 160px;min-height:40px;font-size:15px}
+.lform input#lUrl{flex:2 1 240px}
+.lform .ghost{flex:0 0 auto;padding:0 18px;min-height:40px}
 .tools{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .sync{display:inline-flex;align-items:center;gap:8px;min-height:44px;font:600 12px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
@@ -336,15 +346,18 @@ select:hover,input:hover{border-color:var(--gold)}
     </div>
   </div>
 
-  <section class="panel links" aria-label="Links rápidos">
-    <div class="phead"><h2 class="ptitle">Links rápidos</h2><span class="lab" id="lCount"></span></div>
-    <div class="lform">
+  <section class="qlinks" aria-label="Links rápidos">
+    <div class="qrow">
+      <span class="lab">Links</span>
+      <div class="qchips" id="ltiles"></div>
+      <span class="qnone" id="lEmpty">Nenhum link salvo</span>
+      <button class="qadd" id="toggleLink" type="button" aria-expanded="false" aria-controls="lform">+ Novo</button>
+    </div>
+    <div class="lform" id="lform" hidden>
       <input id="lName" type="text" maxlength="40" placeholder="Nome (ex.: Aulas)" aria-label="Nome do link" autocomplete="off">
       <input id="lUrl" type="text" inputmode="url" placeholder="Endereço (ex.: site.com.br/aulas)" aria-label="Endereço do link" autocomplete="off" autocapitalize="none" spellcheck="false">
       <button class="btn ghost" id="addLink" type="button">Adicionar</button>
     </div>
-    <div class="ltiles" id="ltiles"></div>
-    <p class="empty" id="lEmpty" style="margin-top:16px">Nenhum link ainda. Adicione a plataforma de aulas, o banco de questões ou o edital.</p>
   </section>
 
   <details class="panel settings" id="settings">
@@ -789,13 +802,20 @@ function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){
 function renderLinks(){
   var h='';
   S.links.forEach(function(l,i){
-    h+='<div class="ltile"><a href="'+esc(l.u)+'" target="_blank" rel="noopener noreferrer"><span class="ln">'+esc(l.n)+'</span><span class="lh">'+esc(hostOf(l.u))+'</span></a>'+
-       '<button class="x" type="button" data-lrm="'+i+'" aria-label="Remover link '+esc(l.n)+'">&times;</button></div>';
+    h+='<span class="qchip"><a href="'+esc(l.u)+'" target="_blank" rel="noopener noreferrer" title="'+esc(hostOf(l.u))+'">'+esc(l.n)+'</a>'+
+       '<button class="x" type="button" data-lrm="'+i+'" aria-label="Remover link '+esc(l.n)+'">&times;</button></span>';
   });
   $('ltiles').innerHTML=h;
   $('lEmpty').hidden=S.links.length>0;
-  $('lCount').textContent=S.links.length?S.links.length+(S.links.length===1?' link':' links'):'';
 }
+function setLinkForm(open){
+  $('lform').hidden=!open;
+  var t=$('toggleLink');
+  t.setAttribute('aria-expanded',open?'true':'false');
+  t.textContent=open?'Fechar':'+ Novo';
+  if(open)$('lName').focus();
+}
+$('toggleLink').addEventListener('click',function(){setLinkForm($('lform').hidden)});
 function addLink(){
   var nameI=$('lName'),urlI=$('lUrl'),href=normUrl(urlI.value);
   if(!href){toast('Digite um endereço válido, como site.com.br/aulas.');urlI.focus();return}
@@ -804,7 +824,7 @@ function addLink(){
   var n=nameI.value.trim().slice(0,40)||hostOf(href);
   S.links.push({n:n,u:href});
   nameI.value='';urlI.value='';
-  save();renderLinks();toast('Link adicionado.');
+  save();renderLinks();setLinkForm(false);toast('Link adicionado.');
 }
 $('addLink').addEventListener('click',addLink);
 ['lName','lUrl'].forEach(function(id){
